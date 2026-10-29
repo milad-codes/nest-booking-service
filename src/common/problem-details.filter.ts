@@ -6,7 +6,12 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { DriverException, NotFoundError, UniqueConstraintViolationException } from '@mikro-orm/postgresql';
+import {
+  DriverException,
+  NotFoundError,
+  OptimisticLockError,
+  UniqueConstraintViolationException,
+} from '@mikro-orm/postgresql';
 import type { Request, Response } from 'express';
 
 export interface ProblemDetails {
@@ -57,6 +62,12 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     }
     if (exception instanceof NotFoundError)
       return { ...base(HttpStatus.NOT_FOUND), detail: 'Resource not found' };
+    if (exception instanceof OptimisticLockError) {
+      return {
+        ...base(HttpStatus.CONFLICT),
+        detail: 'The record was changed by another request; reload it and retry',
+      };
+    }
     if (exception instanceof UniqueConstraintViolationException) {
       return { ...base(HttpStatus.CONFLICT), detail: 'A record with the same unique value already exists' };
     }

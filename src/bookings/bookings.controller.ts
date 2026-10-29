@@ -29,8 +29,9 @@ import { BookingsService } from './bookings.service.js';
 
 const etag = (b: BookingDto): string => `"${b.version}"`;
 
+/** Parses `If-Match`: a version ETag such as "3", or `*` (any current version, RFC 9110 §13.1.1). */
 function parseIfMatch(header: string | undefined): number | undefined {
-  if (header === undefined) return undefined;
+  if (header === undefined || header.trim() === '*') return undefined;
   const match = /^(?:W\/)?"?(\d+)"?$/.exec(header.trim());
   if (!match?.[1]) throw new BadRequestException('If-Match must be a version ETag such as "3"');
   return Number(match[1]);

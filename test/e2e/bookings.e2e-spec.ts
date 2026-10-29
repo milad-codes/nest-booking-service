@@ -166,6 +166,41 @@ describe('resources and bookings (e2e)', () => {
     expect(seen).toEqual(created);
   });
 
+  describe('concurrency and input regressions', () => {
+    it('rejects a malformed cursor with 400 instead of a server error', async () => {
+      const res = await ctx.http().get('/bookings').query({ cursor: 'not-a-cursor' }).set(as(alice));
+      expect(res.status).toBe(400);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      const forged = Buffer.from(JSON.stringify(['yesterday', 'x'])).toString('base64url');
+      await ctx.http().get('/bookings').query({ cursor: forged }).set(as(alice)).expect(400);
+    });
+
+    it('answers concurrent cancellations of one booking with 200, not a server error', async () => {
+      const created = (await book(alice, 60, 61).expect(201)).body;
+      const results = await Promise.all(
+        Array.from({ length: 5 }, () => ctx.http().post(`/bookings/${created.id}/cancel`).set(as(alice))),
+      );
+      expect(results.map((r) => r.status)).toEqual([200, 200, 200, 200, 200]);
+      for (const r of results) expect(r.body).toMatchObject({ status: 'cancelled', version: 2 });
+    });
+
+    it('lets exactly one of several concurrent If-Match cancellations win; the rest get 412', async () => {
+      const created = (await book(alice, 62, 63).expect(201)).body;
+      const results = await Promise.all(
+        Array.from({ length: 5 }, () =>
+          ctx.http().post(`/bookings/${created.id}/cancel`).set(as(alice)).set('If-Match', '"1"'),
+        ),
+      );
+      const statuses = results.map((r) => r.status).sort();
+      expect(statuses).toEqual([200, 412, 412, 412, 412]);
+    });
+
+    it('accepts If-Match: * as "any current version"', async () => {
+      const created = (await book(alice, 64, 65).expect(201)).body;
+      await ctx.http().post(`/bookings/${created.id}/cancel`).set(as(alice)).set('If-Match', '*').expect(200);
+    });
+  });
+
   it('reports busy intervals without exposing who booked', async () => {
     const res = await ctx
       .http()
