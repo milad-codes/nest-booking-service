@@ -94,18 +94,18 @@ In production, run migrations as a release step (`node dist/database/migrate.js`
 
 ### Configuration
 
-| Variable                 | Default |                                              |
-| ------------------------ | ------- | -------------------------------------------- |
-| `DATABASE_URL`           | —       | `postgresql://…` (required)                  |
-| `JWT_ACCESS_SECRET`      | —       | ≥ 32 characters (required)                   |
-| `JWT_ACCESS_TTL_SECONDS` | `900`   | access token lifetime                        |
-| `REFRESH_TOKEN_TTL_DAYS` | `30`    |                                              |
-| `BOOTSTRAP_ADMIN_EMAIL`  | —       | this email becomes `admin` on registration   |
-| `MIGRATE_ON_START`       | `false` |                                              |
-| `RATE_LIMIT_PER_MINUTE`  | `120`   | per client, all routes except probes/metrics |
-| `METRICS_TOKEN`          | —       | protects `/metrics` when set                 |
-| `LOG_LEVEL`              | `info`  |                                              |
-| `PORT`                   | `3000`  |                                              |
+| Variable                 | Default |                                                     |
+| ------------------------ | ------- | --------------------------------------------------- |
+| `DATABASE_URL`           | —       | `postgresql://…` (required)                         |
+| `JWT_ACCESS_SECRET`      | —       | ≥ 32 characters (required)                          |
+| `JWT_ACCESS_TTL_SECONDS` | `900`   | access token lifetime                               |
+| `REFRESH_TOKEN_TTL_DAYS` | `30`    |                                                     |
+| `BOOTSTRAP_ADMIN_EMAIL`  | —       | this email becomes `admin` on registration          |
+| `MIGRATE_ON_START`       | `false` |                                                     |
+| `RATE_LIMIT_PER_MINUTE`  | `120`   | per client IP, all routes except probes and metrics |
+| `METRICS_TOKEN`          | —       | protects `/metrics` when set                        |
+| `LOG_LEVEL`              | `info`  |                                                     |
+| `PORT`                   | `3000`  |                                                     |
 
 Invalid configuration fails at boot with every problem listed.
 
