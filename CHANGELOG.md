@@ -5,6 +5,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `npm run demo`: a walkthrough of the API with synthetic data against a running instance
+
+### Changed
+
+- `npm start`, `npm run start:dev` and `npm run db:migrate` read `.env` when it exists, as the setup instructions
+  assumed
+- README rewritten: problem and scope, decisions with trade-offs, setup, troubleshooting and limitations; badges limited
+  to CI, release and licence; SECURITY.md covers deployment checks
+
 ### Fixed
 
 - Concurrent cancellations of one booking returned 500; they now return 200 (idempotent) or 412 with `If-Match` (#9)
