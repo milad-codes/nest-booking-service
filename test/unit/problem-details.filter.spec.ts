@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, HttpStatus } from '@nestjs/common';
-import { DriverException, NotFoundError } from '@mikro-orm/postgresql';
+import { DriverException, NotFoundError, OptimisticLockError } from '@mikro-orm/postgresql';
 import { ProblemDetailsFilter } from '../../src/common/problem-details.filter.js';
 
 describe('ProblemDetailsFilter.toProblem', () => {
@@ -20,6 +20,10 @@ describe('ProblemDetailsFilter.toProblem', () => {
   it('maps an exclusion-constraint violation (23P01) to 409', () => {
     const error = Object.assign(new DriverException(new Error('conflicting key value')), { code: '23P01' });
     expect(filter.toProblem(error)).toMatchObject({ status: HttpStatus.CONFLICT, code: '23P01' });
+  });
+
+  it('maps a lost optimistic-lock race to 409 instead of 500', () => {
+    expect(filter.toProblem(OptimisticLockError.lockFailed('Booking'))).toMatchObject({ status: 409 });
   });
 
   it('maps ORM not-found to 404', () => {

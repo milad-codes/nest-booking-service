@@ -1,16 +1,18 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
   PreconditionFailedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { DriverException, EntityManager } from '@mikro-orm/postgresql';
+import { DriverException, EntityManager, OptimisticLockError } from '@mikro-orm/postgresql';
 import type { AuthUser } from '../auth/auth.decorators.js';
 import { newId } from '../common/ids.js';
 import { Resource } from '../resources/resource.entity.js';
 import { Metrics } from '../observability/metrics.service.js';
 import { User } from '../users/user.entity.js';
+import { isBookingCursor } from './booking-cursor.js';
 import { Booking } from './booking.entity.js';
 import { periodViolations } from './booking-period.js';
 import type { BookingDto, BookingPageDto, CreateBookingDto, ListBookingsQuery } from './bookings.dto.js';
@@ -29,6 +31,9 @@ export const toBookingDto = (b: Booking): BookingDto => ({
   cancelledAt: b.cancelledAt ?? null,
   version: b.version,
 });
+
+const versionChanged = (actual: number, expected: number) =>
+  new PreconditionFailedException(`Booking has version ${actual}, not ${expected}`);
 
 export class BookingConflictError extends ConflictException {
   constructor() {
@@ -82,6 +87,9 @@ export class BookingsService {
   }
 
   async list(current: AuthUser, query: ListBookingsQuery): Promise<BookingPageDto> {
+    if (query.cursor !== undefined && !isBookingCursor(query.cursor)) {
+      throw new BadRequestException('cursor is not valid; pass nextCursor from a previous page unchanged');
+    }
     const everyone = query.scope === 'all' && current.role === 'admin';
     const page = await this.em.findByCursor(Booking, {
       where: everyone ? {} : { user: current.id },
@@ -100,16 +108,29 @@ export class BookingsService {
     return toBookingDto(await this.findVisible(current, id));
   }
 
-  /** Cancels a booking (frees the slot). Optional If-Match version guards against lost updates. */
+  /**
+   * Cancels a booking (frees the slot). Cancelling twice is not an error. An optional If-Match version guards
+   * against lost updates: when two requests race, the database version check decides and the loser gets 412.
+   */
   async cancel(current: AuthUser, id: string, expectedVersion?: number): Promise<BookingDto> {
     const booking = await this.findVisible(current, id);
     if (expectedVersion !== undefined && booking.version !== expectedVersion) {
-      throw new PreconditionFailedException(`Booking has version ${booking.version}, not ${expectedVersion}`);
+      throw versionChanged(booking.version, expectedVersion);
     }
     if (booking.status === 'cancelled') return toBookingDto(booking);
     booking.status = 'cancelled';
     booking.cancelledAt = new Date();
-    await this.em.flush();
+    try {
+      await this.em.flush();
+    } catch (error) {
+      if (!(error instanceof OptimisticLockError)) throw error;
+      // Another request changed the booking between our read and our write: answer from the current row.
+      this.em.clear();
+      const latest = await this.findVisible(current, id);
+      if (expectedVersion !== undefined) throw versionChanged(latest.version, expectedVersion);
+      if (latest.status === 'cancelled') return toBookingDto(latest);
+      throw new ConflictException('The booking changed while it was being cancelled; retry the request');
+    }
     return toBookingDto(booking);
   }
 

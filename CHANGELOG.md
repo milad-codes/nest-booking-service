@@ -3,6 +3,14 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Concurrent cancellations of one booking returned 500; they now return 200 (idempotent) or 412 with `If-Match` (#9)
+- Malformed or forged page cursors returned 500; they now return 400 (#9)
+- `If-Match: *` is accepted as "any current version" (#9)
+
 ## [0.1.0] — 2026-10-29
 
 ### Added
