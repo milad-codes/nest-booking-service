@@ -10,6 +10,7 @@ import {
 import type { Response } from 'express';
 import { catchError, concatMap, from, type Observable, of, throwError } from 'rxjs';
 import type { AuthenticatedRequest } from '../../auth/auth.decorators.js';
+import { Metrics } from '../../observability/metrics.service.js';
 import { sha256Hex } from '../ids.js';
 import { stableStringify } from '../stable-json.js';
 import { IdempotencyService } from './idempotency.service.js';
@@ -22,7 +23,10 @@ const KEY_PATTERN = /^[A-Za-z0-9._:-]{1,255}$/;
  */
 @Injectable()
 export class IdempotencyInterceptor implements NestInterceptor {
-  constructor(private readonly store: IdempotencyService) {}
+  constructor(
+    private readonly store: IdempotencyService,
+    private readonly metrics: Metrics,
+  ) {}
 
   async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
@@ -43,6 +47,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
       case 'in-progress':
         throw new ConflictException('A request with this Idempotency-Key is still being processed');
       case 'replay':
+        this.metrics.idempotentReplays.inc();
         response.status(decision.statusCode).setHeader('Idempotent-Replayed', 'true');
         return of(decision.body);
       case 'new':
