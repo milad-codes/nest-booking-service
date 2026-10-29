@@ -1,14 +1,14 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { type AuthUser, CurrentUser } from '../auth/auth.decorators.js';
 import { User } from './user.entity.js';
 
 class MeDto {
-  id: string;
-  email: string;
-  role: string;
-  createdAt: Date;
+  @ApiProperty() id: string;
+  @ApiProperty() email: string;
+  @ApiProperty({ enum: ['admin', 'member'] }) role: string;
+  @ApiProperty() createdAt: Date;
 }
 
 @ApiTags('users')

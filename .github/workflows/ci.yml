@@ -53,3 +53,36 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:e2e
+
+  docker:
+    name: Container image (build + smoke test)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: booking
+          POSTGRES_PASSWORD: booking
+          POSTGRES_DB: booking
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U booking -d booking"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t nest-booking-service:ci .
+      - name: Start the image against PostgreSQL and wait for readiness
+        run: |
+          docker run -d --name api --network host \
+            -e DATABASE_URL=postgresql://booking:booking@localhost:5432/booking \
+            -e JWT_ACCESS_SECRET=ci-secret-ci-secret-ci-secret-ci-secret \
+            -e MIGRATE_ON_START=true \
+            nest-booking-service:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/health/ready; then echo; exit 0; fi
+            sleep 2
+          done
+          docker logs api
+          exit 1
+      - name: Image runs as non-root
+        run: test "$(docker exec api id -u)" != "0"

@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: booking
+      POSTGRES_PASSWORD: booking
+      POSTGRES_DB: booking
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U booking -d booking']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://booking:booking@db:5432/booking
+      # local demo only; in production run `node dist/database/migrate.js` as a release step
+      MIGRATE_ON_START: 'true'
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-local-dev-secret-local-dev-secret-0001}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@example.com}
+      LOG_LEVEL: info
+    ports:
+      - '3000:3000'
+
+volumes:
+  pgdata:
