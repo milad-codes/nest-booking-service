@@ -19,6 +19,7 @@ const EnvSchema = z.object({
     .email()
     .transform((value) => value.toLowerCase())
     .optional(),
+  METRICS_TOKEN: z.string().min(16, 'use at least 16 characters').optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

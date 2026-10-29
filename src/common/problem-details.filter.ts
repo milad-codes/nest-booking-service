@@ -35,6 +35,8 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     const response = http.getResponse<Response>();
     const problem = this.toProblem(exception);
     problem.instance = request.originalUrl;
+    const requestId = (request as Request & { id?: unknown }).id;
+    if (typeof requestId === 'string') problem.requestId = requestId;
     if (problem.status >= 500)
       this.logger.error(exception instanceof Error ? exception.stack : String(exception));
     response.status(problem.status).type('application/problem+json').json(problem);

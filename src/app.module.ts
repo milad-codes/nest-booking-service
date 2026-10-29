@@ -7,6 +7,7 @@ import { BookingsModule } from './bookings/bookings.module.js';
 import { type Env, validateEnv } from './config/env.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthController } from './health/health.controller.js';
+import { ObservabilityModule } from './observability/observability.module.js';
 import { UsersController } from './users/users.controller.js';
 
 @Module({
@@ -18,6 +19,7 @@ import { UsersController } from './users/users.controller.js';
         { ttl: 60_000, limit: config.get('RATE_LIMIT_PER_MINUTE', { infer: true }) },
       ],
     }),
+    ObservabilityModule,
     DatabaseModule,
     AuthModule,
     BookingsModule,

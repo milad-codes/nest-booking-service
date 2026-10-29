@@ -9,6 +9,7 @@ import { DriverException, EntityManager } from '@mikro-orm/postgresql';
 import type { AuthUser } from '../auth/auth.decorators.js';
 import { newId } from '../common/ids.js';
 import { Resource } from '../resources/resource.entity.js';
+import { Metrics } from '../observability/metrics.service.js';
 import { User } from '../users/user.entity.js';
 import { Booking } from './booking.entity.js';
 import { periodViolations } from './booking-period.js';
@@ -40,7 +41,10 @@ export class BookingConflictError extends ConflictException {
 
 @Injectable()
 export class BookingsService {
-  constructor(private readonly em: EntityManager) {}
+  constructor(
+    private readonly em: EntityManager,
+    private readonly metrics: Metrics,
+  ) {}
 
   /**
    * No "check then insert": the INSERT itself is the check. The exclusion constraint makes PostgreSQL
@@ -68,10 +72,12 @@ export class BookingsService {
         error instanceof DriverException &&
         (error as DriverException & { code?: string }).code === EXCLUSION_VIOLATION
       ) {
+        this.metrics.bookingConflicts.inc();
         throw new BookingConflictError();
       }
       throw error;
     }
+    this.metrics.bookingsCreated.inc();
     return toBookingDto(booking);
   }
 
