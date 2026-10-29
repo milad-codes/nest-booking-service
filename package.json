@@ -48,17 +48,18 @@
     "@vitest/coverage-v8": "^4.1.2"
   },
   "type": "module",
-  "description": "Production-grade NestJS + PostgreSQL booking API: race-free reservations, idempotent writes, JWT rotation, OpenAPI, metrics.",
+  "description": "Booking API for shared resources (NestJS, PostgreSQL): overlaps rejected by the database, idempotent retries, refresh-token rotation, OpenAPI and metrics.",
   "scripts": {
     "build": "nest build",
-    "start": "node dist/main.js",
-    "start:dev": "nest start --watch",
+    "start": "node --env-file-if-exists=.env dist/main.js",
+    "start:dev": "node --env-file-if-exists=.env node_modules/@nestjs/cli/bin/nest.js start --watch",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "oxlint src test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
-    "db:migrate": "node dist/database/migrate.js"
+    "db:migrate": "node --env-file-if-exists=.env dist/database/migrate.js",
+    "demo": "node scripts/demo.mjs"
   }
 }
